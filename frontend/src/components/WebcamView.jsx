@@ -16,7 +16,6 @@ export default function WebcamView({ onPrediction, isProcessing, setIsProcessing
           setHasCamera(true);
         }
       } catch (err) {
-        console.error("Camera error:", err);
         setError('Camera permission denied or camera not found.');
       }
     }
@@ -37,7 +36,6 @@ export default function WebcamView({ onPrediction, isProcessing, setIsProcessing
     
     canvasRef.current.toBlob(async (blob) => {
       if (!blob) return;
-      
       const formData = new FormData();
       formData.append('file', blob, 'frame.jpg');
 
@@ -45,25 +43,27 @@ export default function WebcamView({ onPrediction, isProcessing, setIsProcessing
         const data = await apiClient.postForm('/predict', formData);
         onPrediction(data);
       } catch (err) {
-        console.error("Prediction failed:", err);
+        console.error(err);
       }
     }, 'image/jpeg', 0.8);
   }, [isProcessing, onPrediction]);
 
-  // Inference loop
   useEffect(() => {
     let interval;
     if (isProcessing && hasCamera) {
-      interval = setInterval(captureFrame, 250); // 4 frames per second
+      interval = setInterval(captureFrame, 250); 
     }
     return () => clearInterval(interval);
   }, [isProcessing, hasCamera, captureFrame]);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl shadow-[0_0_40px_rgba(59,130,246,0.3)] bg-slate-900 border border-slate-700/50 backdrop-blur-xl">
+    <div className="glass-panel rounded-3xl overflow-hidden relative group aspect-[4/3] flex flex-col justify-center">
       {error ? (
-        <div className="flex items-center justify-center h-[480px] text-red-400 p-8 text-center bg-slate-800/50">
-          {error}
+        <div className="text-red-400 p-8 text-center m-auto">
+          <svg className="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          <p className="font-medium">{error}</p>
         </div>
       ) : (
         <>
@@ -72,18 +72,21 @@ export default function WebcamView({ onPrediction, isProcessing, setIsProcessing
             autoPlay 
             playsInline 
             muted 
-            className="w-full h-auto max-h-[500px] object-cover scale-x-[-1]"
+            className={`w-full h-full object-cover scale-x-[-1] transition-all duration-700 ${!isProcessing && 'grayscale brightness-50 contrast-125'}`}
           />
           <canvas ref={canvasRef} width="640" height="480" className="hidden" />
           
-          <div className="absolute top-4 left-4 flex gap-2">
-            <span className={`px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full flex items-center gap-2 backdrop-blur-md ${isProcessing ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}`}>
-              <div className={`w-2 h-2 rounded-full ${isProcessing ? 'bg-green-400 animate-pulse' : 'bg-red-500'}`}></div>
-              {isProcessing ? 'Live Inference' : 'Paused'}
-            </span>
+          {/* HUD Overlay */}
+          <div className="absolute inset-0 pointer-events-none box-border border-[6px] border-transparent group-hover:border-white/5 transition-all duration-500 rounded-3xl"></div>
+          
+          <div className="absolute top-6 left-6 flex gap-3">
+            <div className={`px-4 py-1.5 rounded-full backdrop-blur-md border shadow-lg flex items-center gap-2 transition-all ${isProcessing ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' : 'bg-slate-800/60 border-slate-600/50 text-slate-400'}`}>
+              <div className={`w-2.5 h-2.5 rounded-full ${isProcessing ? 'bg-emerald-400 animate-pulse shadow-[0_0_10px_#34d399]' : 'bg-slate-500'}`}></div>
+              <span className="text-xs font-bold uppercase tracking-wider">{isProcessing ? 'Live Feed' : 'Standby'}</span>
+            </div>
           </div>
           
-          <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/80 via-transparent to-transparent pointer-events-none"></div>
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent pointer-events-none"></div>
         </>
       )}
     </div>

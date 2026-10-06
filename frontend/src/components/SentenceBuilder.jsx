@@ -7,21 +7,22 @@ export default function SentenceBuilder({ sequence, generatedSentence, onClear }
     try {
       await apiClient.post('/speak', { text: generatedSentence });
     } catch (err) {
-      console.error("Speak failed", err);
+      console.error(err);
     }
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       {/* Sequence Timeline */}
-      <div className="p-5 rounded-2xl bg-slate-800/40 border border-slate-700/50 backdrop-blur-md">
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Sequence Timeline</h3>
-        <div className="flex flex-wrap gap-2 min-h-[40px]">
+      <div className="glass-card p-6 rounded-3xl">
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Sequence Timeline</h3>
+        <div className="flex flex-wrap gap-2.5 min-h-[44px]">
           {sequence.length === 0 ? (
-            <span className="text-sm text-slate-500">No signs detected yet.</span>
+            <span className="text-sm font-medium text-slate-500 italic flex items-center h-full">Listening for signs...</span>
           ) : (
             sequence.map((sign, idx) => (
-              <span key={idx} className="px-3 py-1 text-sm font-medium bg-slate-700/50 text-slate-200 rounded-lg border border-slate-600/50 animate-[fadeIn_0.3s_ease-out]">
+              <span key={idx} className="px-4 py-1.5 text-sm font-bold bg-slate-800 text-slate-200 rounded-xl border border-slate-700 shadow-sm animate-fade-in flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-primary"></span>
                 {sign}
               </span>
             ))
@@ -29,43 +30,43 @@ export default function SentenceBuilder({ sequence, generatedSentence, onClear }
         </div>
       </div>
 
-      {/* Finalized Sentence Output */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-indigo-900/40 to-blue-900/40 border border-indigo-500/30 shadow-[0_0_30px_rgba(79,70,229,0.15)] relative overflow-hidden group">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none mix-blend-overlay"></div>
+      {/* NLP Generated Sentence */}
+      <div className="p-8 rounded-3xl bg-gradient-to-br from-brand-primary/20 via-brand-accent/10 to-transparent border border-brand-primary/30 shadow-[0_0_40px_rgba(79,70,229,0.1)] relative overflow-hidden group">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none mix-blend-overlay"></div>
         
-        <div className="flex justify-between items-start mb-4 relative z-10">
-          <h3 className="text-sm font-semibold text-indigo-300 uppercase tracking-widest">Translated Sentence</h3>
-          <div className="flex gap-2">
+        <div className="flex justify-between items-start mb-6 relative z-10">
+          <h3 className="text-xs font-bold text-brand-secondary uppercase tracking-[0.2em]">Translated Output</h3>
+          <div className="flex gap-3">
             <button 
               onClick={handleSpeak}
               disabled={!generatedSentence}
-              className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/40 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed group-hover:shadow-[0_0_15px_rgba(99,102,241,0.5)]"
+              className="p-2.5 rounded-xl bg-brand-primary text-white shadow-lg shadow-brand-primary/40 hover:bg-indigo-500 hover:shadow-indigo-500/50 transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
               title="Speak Aloud"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
               </svg>
             </button>
             <button 
               onClick={onClear}
-              className="p-2 rounded-xl bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white transition-all"
-              title="Clear"
+              className="p-2.5 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-white transition-all hover:-translate-y-0.5 active:translate-y-0"
+              title="Clear Sequence"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
           </div>
         </div>
 
-        <div className="min-h-[80px] flex items-center relative z-10">
+        <div className="min-h-[100px] flex items-center relative z-10">
           {generatedSentence ? (
-            <p className="text-2xl md:text-3xl font-bold text-white tracking-wide leading-tight">
+            <p className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight drop-shadow-md">
               {generatedSentence}
             </p>
           ) : (
-            <p className="text-xl text-indigo-200/50 italic font-light">
-              Start signing to generate a sentence...
+            <p className="text-2xl text-slate-400/50 font-medium">
+              Start signing...
             </p>
           )}
         </div>
