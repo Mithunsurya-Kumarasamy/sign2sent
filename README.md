@@ -39,14 +39,26 @@ WEBCAM -> VIDEO FRAMES -> MEDIAPIPE HAND DETECTION -> PREPROCESSING -> CNN -> SP
 - Not a universal or unrestricted sign language translator.
 
 ## Future Improvements
-- Larger vocabulary.
-- More robust signer-independent models.
-- Support for continuous sign language translation.
-- Transformer-based temporal models.
-- Mobile/Edge deployment.
+For a detailed list of highly technical, portfolio-defining features that can be implemented next, please see the [Future Features Roadmap](FUTURE_FEATURES.md).
 
 ## Installation & Usage
-(To be added in future phases)
+
+1. **Install Backend Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. **Start the FastAPI Backend:**
+   ```bash
+   uvicorn backend.main:app --host 0.0.0.0 --port 8000
+   ```
+3. **Start the React Frontend:**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+4. **Access the App:** Open your browser and navigate to `http://localhost:5173`. Click "Turn On Camera" and "Start Inference".
 
 ## Team
 - Mithunsurya Kumarasamy
+- Suwetha S
