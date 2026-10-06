@@ -22,7 +22,19 @@ class InferenceService:
             
         _, _, is_detected = self.detector.process_frame(frame)
         
+        # If no hand detected, check if we are in demo mode and bypassed
         if not is_detected:
+            if not self.detector.is_valid and self.recognizer.demo_mode:
+                # We are in bypass mode. Simulate passing the full frame to the recognizer.
+                # In demo mode, it just returns a fake sign randomly anyway.
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                sign, conf = self.recognizer.process_frame(frame_rgb)
+                return {
+                    "sign": sign,
+                    "confidence": conf,
+                    "hand_detected": True, # Fake it for UI
+                    "demo_mode": True
+                }
             return {"sign": None, "confidence": 0.0, "hand_detected": False}
             
         hand_region = self.detector.extract_hand_region(frame)

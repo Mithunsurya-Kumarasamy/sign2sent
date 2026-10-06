@@ -48,44 +48,36 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-brand-dark">
-      {/* Animated Ambient Background Blobs */}
-      <div className="absolute top-0 -left-4 w-96 h-96 bg-brand-primary rounded-full mix-blend-screen filter blur-[128px] opacity-20 animate-blob"></div>
-      <div className="absolute top-0 -right-4 w-96 h-96 bg-brand-secondary rounded-full mix-blend-screen filter blur-[128px] opacity-20 animate-blob animation-delay-2000"></div>
-      <div className="absolute -bottom-32 left-1/2 w-96 h-96 bg-brand-accent rounded-full mix-blend-screen filter blur-[128px] opacity-20 animate-blob animation-delay-4000"></div>
-
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col gap-10">
-        
-        {/* Header */}
-        <header className="flex flex-col md:flex-row items-center justify-between gap-4 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center shadow-lg shadow-brand-primary/30">
-              <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+    <div className="min-h-screen bg-[#F9FAFB] text-slate-900 font-sans selection:bg-indigo-100">
+      
+      {/* Sleek Top Navigation */}
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
               </svg>
             </div>
-            <div>
-              <h1 className="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                Sign2Sent AI
-              </h1>
-              <p className="text-sm text-brand-secondary tracking-widest font-medium uppercase mt-1">Real-Time Translation</p>
-            </div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              Sign2Sent
+            </h1>
           </div>
           
-          <div className="flex items-center gap-3 px-5 py-2.5 rounded-full glass-card hover:bg-slate-800/60 transition-colors">
-            <div className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </div>
-            <span className="text-sm font-semibold text-slate-200">System Online</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-50 border border-emerald-200">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">System Online</span>
           </div>
-        </header>
+        </div>
+      </nav>
 
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
+        
         {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Left Column (Camera + Controls) */}
-          <div className="lg:col-span-7 flex flex-col gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+          <div className="lg:col-span-7 flex flex-col gap-6">
             <WebcamView 
               isProcessing={isProcessing} 
               setIsProcessing={setIsProcessing} 
@@ -99,7 +91,7 @@ export default function App() {
           </div>
           
           {/* Right Column (NLP & Analysis) */}
-          <div className="lg:col-span-5 flex flex-col gap-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+          <div className="lg:col-span-5 flex flex-col gap-6">
             <SignDisplay 
               currentSign={currentSign}
               confidence={confidence}
@@ -112,7 +104,7 @@ export default function App() {
             />
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

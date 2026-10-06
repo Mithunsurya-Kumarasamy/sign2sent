@@ -13,16 +13,16 @@ export default function SentenceBuilder({ sequence, generatedSentence, onClear }
 
   return (
     <div className="flex flex-col gap-6">
+      
       {/* Sequence Timeline */}
-      <div className="glass-card p-6 rounded-3xl">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Sequence Timeline</h3>
-        <div className="flex flex-wrap gap-2.5 min-h-[44px]">
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-700 mb-4">Sequence Timeline</h3>
+        <div className="flex flex-wrap gap-2 min-h-[40px]">
           {sequence.length === 0 ? (
-            <span className="text-sm font-medium text-slate-500 italic flex items-center h-full">Listening for signs...</span>
+            <span className="text-sm text-slate-400 italic flex items-center">Listening for sequence...</span>
           ) : (
             sequence.map((sign, idx) => (
-              <span key={idx} className="px-4 py-1.5 text-sm font-bold bg-slate-800 text-slate-200 rounded-xl border border-slate-700 shadow-sm animate-fade-in flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-brand-primary"></span>
+              <span key={idx} className="px-3 py-1 text-sm font-medium bg-slate-100 text-slate-700 rounded-md border border-slate-200">
                 {sign}
               </span>
             ))
@@ -31,16 +31,14 @@ export default function SentenceBuilder({ sequence, generatedSentence, onClear }
       </div>
 
       {/* NLP Generated Sentence */}
-      <div className="p-8 rounded-3xl bg-gradient-to-br from-brand-primary/20 via-brand-accent/10 to-transparent border border-brand-primary/30 shadow-[0_0_40px_rgba(79,70,229,0.1)] relative overflow-hidden group">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none mix-blend-overlay"></div>
-        
-        <div className="flex justify-between items-start mb-6 relative z-10">
-          <h3 className="text-xs font-bold text-brand-secondary uppercase tracking-[0.2em]">Translated Output</h3>
-          <div className="flex gap-3">
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+        <div className="flex justify-between items-start mb-6">
+          <h3 className="text-sm font-semibold text-slate-700">Translated Sentence</h3>
+          <div className="flex gap-2">
             <button 
               onClick={handleSpeak}
               disabled={!generatedSentence}
-              className="p-2.5 rounded-xl bg-brand-primary text-white shadow-lg shadow-brand-primary/40 hover:bg-indigo-500 hover:shadow-indigo-500/50 transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
+              className="p-1.5 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Speak Aloud"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -49,7 +47,7 @@ export default function SentenceBuilder({ sequence, generatedSentence, onClear }
             </button>
             <button 
               onClick={onClear}
-              className="p-2.5 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-white transition-all hover:-translate-y-0.5 active:translate-y-0"
+              className="p-1.5 rounded-md bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100 transition-colors"
               title="Clear Sequence"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -59,14 +57,14 @@ export default function SentenceBuilder({ sequence, generatedSentence, onClear }
           </div>
         </div>
 
-        <div className="min-h-[100px] flex items-center relative z-10">
+        <div className="min-h-[80px] flex items-center bg-slate-50 rounded-lg p-4 border border-slate-100">
           {generatedSentence ? (
-            <p className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight drop-shadow-md">
+            <p className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">
               {generatedSentence}
             </p>
           ) : (
-            <p className="text-2xl text-slate-400/50 font-medium">
-              Start signing...
+            <p className="text-lg text-slate-400 italic">
+              Translated output will appear here...
             </p>
           )}
         </div>
