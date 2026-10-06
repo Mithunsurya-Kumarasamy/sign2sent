@@ -1,0 +1,47 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.npm/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Data and Models
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+models/*.pth
+models/*.pt
+!models/.gitkeep
+
+# Logs and outputs
+logs/
+*.log
+results/*.png
+results/*.txt
+!results/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
