@@ -13,16 +13,21 @@ class HandDetector:
         """
         Initializes the MediaPipe Hand detector.
         """
-        self.mp_hands = mp.solutions.hands
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_drawing_styles = mp.solutions.drawing_styles
-        
-        self.hands = self.mp_hands.Hands(
-            static_image_mode=static_image_mode,
-            max_num_hands=max_num_hands,
-            min_detection_confidence=min_detection_confidence,
-            min_tracking_confidence=min_tracking_confidence
-        )
+        try:
+            self.mp_hands = mp.solutions.hands
+            self.mp_drawing = mp.solutions.drawing_utils
+            self.mp_drawing_styles = mp.solutions.drawing_styles
+            
+            self.hands = self.mp_hands.Hands(
+                static_image_mode=static_image_mode,
+                max_num_hands=max_num_hands,
+                min_detection_confidence=min_detection_confidence,
+                min_tracking_confidence=min_tracking_confidence
+            )
+            self.is_valid = True
+        except AttributeError:
+            print("Warning: mediapipe.solutions is not available in this Python environment. Hand detection will be bypassed.")
+            self.is_valid = False
 
     def process_frame(self, frame: np.ndarray) -> Tuple[np.ndarray, Optional[List[float]], bool]:
         """
@@ -33,6 +38,9 @@ class HandDetector:
             landmarks (List[float] or None): A flattened list of 21 (x, y, z) landmarks if detected, else None.
             is_detected (bool): True if at least one hand is detected.
         """
+        if not self.is_valid:
+            return frame, None, False
+            
         # Convert BGR to RGB
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
@@ -71,6 +79,9 @@ class HandDetector:
         """
         Extracts the cropped bounding box of the hand region.
         """
+        if not self.is_valid:
+            return None
+            
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.hands.process(frame_rgb)
         
@@ -100,4 +111,5 @@ class HandDetector:
 
     def release(self):
         """Releases the underlying MediaPipe resources."""
-        self.hands.close()
+        if self.is_valid:
+            self.hands.close()

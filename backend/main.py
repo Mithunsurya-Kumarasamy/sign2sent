@@ -15,6 +15,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from backend.api.routes_health import router as health_router
+from backend.api.routes_prediction import router as prediction_router
+from backend.api.routes_sentence import router as sentence_router
+from backend.api.routes_metadata import router as metadata_router
+
+app.include_router(health_router, prefix="/api")
+app.include_router(prediction_router, prefix="/api")
+app.include_router(sentence_router, prefix="/api")
+app.include_router(metadata_router, prefix="/api")
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Sign2Sent API"}
