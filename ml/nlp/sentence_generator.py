@@ -11,7 +11,8 @@ class SentenceGenerator:
             ("I", "NEED", "WATER"): "I need water.",
             ("I", "WANT", "FOOD"): "I want food.",
             ("HELLO", "HOW", "YOU"): "Hello, how are you?",
-            ("MY", "NAME", "IS"): "My name is ", # Will require dynamic appending
+            ("HELLO", "HOW", "ARE", "YOU"): "Hello, how are you?",
+            ("MY", "NAME", "IS"): "My name is...",
             ("WHAT", "IS", "YOUR", "NAME"): "What is your name?",
             ("GOOD", "MORNING"): "Good morning!",
             ("GOOD", "NIGHT"): "Good night!",
@@ -19,7 +20,8 @@ class SentenceGenerator:
             ("PLEASE", "HELP"): "Please help me.",
             ("WHERE", "IS", "COLLEGE"): "Where is the college?",
             ("YES",): "Yes.",
-            ("NO",): "No."
+            ("NO",): "No.",
+            ("HELLO",): "Hello!"
         }
 
     def generate_sentence(self, sequence: List[str]) -> str:
@@ -30,28 +32,59 @@ class SentenceGenerator:
         if not sequence:
             return ""
 
-        seq_tuple = tuple(sequence)
+        # Normalize tokens (trim whitespace and uppercase)
+        clean_seq = [s.strip().upper() for s in sequence if s and s.strip()]
+        if not clean_seq:
+            return ""
+
+        seq_tuple = tuple(clean_seq)
 
         # 1. Exact Match
         if seq_tuple in self.templates:
             return self.templates[seq_tuple]
 
-        # 2. Sub-sequence Matching / Dynamic Patterns
-        # e.g., "MY", "NAME", "X"
-        if len(sequence) >= 3 and sequence[0] == "MY" and sequence[1] == "NAME":
-            name = " ".join(sequence[2:]).title()
-            return f"My name is {name}."
+        # 2. Greeting + Introduction Pattern
+        # e.g., ["HELLO", "MY", "NAME", "IS", "JOHN"] or ["HELLO", "MY", "NAME", "JOHN"]
+        if len(clean_seq) >= 3 and clean_seq[0] == "HELLO" and clean_seq[1] == "MY" and clean_seq[2] == "NAME":
+            name_tokens = clean_seq[3:]
+            if name_tokens and name_tokens[0] == "IS":
+                name_tokens = name_tokens[1:]
+            if name_tokens:
+                name = " ".join(name_tokens).title()
+                return f"Hello, my name is {name}."
+            return "Hello, my name is..."
 
-        if len(sequence) >= 2 and sequence[0] == "I" and sequence[1] == "WANT":
-            rest = " ".join(sequence[2:]).lower()
-            return f"I want {rest}."
+        # 3. Introduction Pattern without greeting
+        # e.g., ["MY", "NAME", "MITHUN"] or ["MY", "NAME", "IS", "JOHN"]
+        if len(clean_seq) >= 2 and clean_seq[0] == "MY" and clean_seq[1] == "NAME":
+            name_tokens = clean_seq[2:]
+            if name_tokens and name_tokens[0] == "IS":
+                name_tokens = name_tokens[1:]
+            if name_tokens:
+                name = " ".join(name_tokens).title()
+                return f"My name is {name}."
+            return "My name is..."
 
-        if len(sequence) >= 2 and sequence[0] == "I" and sequence[1] == "NEED":
-            rest = " ".join(sequence[2:]).lower()
-            return f"I need {rest}."
+        # 4. "I WANT / NEED" Patterns
+        if len(clean_seq) >= 2 and clean_seq[0] == "I" and clean_seq[1] == "WANT":
+            rest = " ".join(clean_seq[2:]).lower()
+            return f"I want {rest}." if rest else "I want..."
 
-        # 3. Fallback: Capitalize first word, lowercase the rest, add period.
-        fallback_sentence = " ".join(sequence).capitalize()
+        if len(clean_seq) >= 2 and clean_seq[0] == "I" and clean_seq[1] == "NEED":
+            rest = " ".join(clean_seq[2:]).lower()
+            return f"I need {rest}." if rest else "I need..."
+
+        # 5. Question patterns: "WHERE [IS] <PLACE>"
+        if len(clean_seq) >= 2 and clean_seq[0] == "WHERE":
+            rest_tokens = clean_seq[1:]
+            if rest_tokens and rest_tokens[0] == "IS":
+                rest_tokens = rest_tokens[1:]
+            if rest_tokens:
+                place = " ".join(rest_tokens).lower()
+                return f"Where is the {place}?"
+
+        # 6. Fallback: Capitalize first word, lowercase the rest, add period.
+        fallback_sentence = " ".join(clean_seq).capitalize()
         return fallback_sentence + "."
         
     def reset(self):
