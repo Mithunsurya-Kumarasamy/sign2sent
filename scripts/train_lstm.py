@@ -6,6 +6,10 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+import sys
+
+# Add project root to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ml.models.cnn import SignCNN
 from ml.models.lstm import SignLSTM

@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import os
+import sys
+
+# Add project root to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ml.models.cnn import SignCNN
 from ml.datasets.cnn_dataset import SignFrameDataset
