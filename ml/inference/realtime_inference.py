@@ -6,7 +6,7 @@ from typing import Optional, List, Tuple
 
 from ml.models.sign2sent import Sign2SentModel
 from ml.preprocessing.preprocessing import get_base_transform
-from ml.utils.config import MODELS_DIR, SEQUENCE_LENGTH, CONFIDENCE_THRESHOLD, COOLDOWN_FRAMES
+from ml.utils.config import MODELS_DIR, SEQUENCE_LENGTH, CONFIDENCE_THRESHOLD, COOLDOWN_FRAMES, LSTM_HIDDEN_SIZE, LSTM_NUM_LAYERS
 from ml.utils.vocabulary import get_num_classes, IDX_MAP
 
 class SignRecognizer:
@@ -15,8 +15,8 @@ class SignRecognizer:
         self.demo_mode = demo_mode
         self.num_classes = get_num_classes()
         self.feature_dim = 256
-        self.hidden_size = 128
-        self.num_layers = 2
+        self.hidden_size = LSTM_HIDDEN_SIZE
+        self.num_layers = LSTM_NUM_LAYERS
         
         # Buffers and State
         self.frame_buffer = collections.deque(maxlen=SEQUENCE_LENGTH)
