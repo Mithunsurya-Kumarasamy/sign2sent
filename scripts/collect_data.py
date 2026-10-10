@@ -1,8 +1,13 @@
 import cv2
 import os
+import sys
 import argparse
 import time
 from pathlib import Path
+
+# Add project root to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from ml.utils.config import RAW_DATA_DIR, SEQUENCE_LENGTH
 from ml.utils.vocabulary import VOCABULARY
 

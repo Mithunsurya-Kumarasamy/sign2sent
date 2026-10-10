@@ -15,6 +15,12 @@ def test_dynamic_pattern_match():
     
     sentence = gen.generate_sentence(["MY", "NAME", "MITHUN"])
     assert sentence == "My name is Mithun."
+
+    sentence = gen.generate_sentence(["MY", "NAME", "IS", "JOHN"])
+    assert sentence == "My name is John."
+
+    sentence = gen.generate_sentence(["HELLO", "MY", "NAME", "IS", "JOHN"])
+    assert sentence == "Hello, my name is John."
     
     sentence = gen.generate_sentence(["I", "WANT", "COFFEE"])
     assert sentence == "I want coffee."

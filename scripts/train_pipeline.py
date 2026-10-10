@@ -1,5 +1,10 @@
 import argparse
 import sys
+import os
+
+# Add the project root to sys.path so 'scripts' and 'ml' can be resolved
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from scripts.train_cnn import train_cnn
 from scripts.train_lstm import train_lstm
 

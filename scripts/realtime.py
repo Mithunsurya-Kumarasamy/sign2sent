@@ -1,4 +1,10 @@
 import cv2
+import sys
+from pathlib import Path
+
+# Add project root to path so it can find the 'ml' module
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 from ml.preprocessing.hand_detection import HandDetector
 from ml.inference.realtime_inference import SignRecognizer
 from ml.nlp.sentence_generator import SentenceGenerator

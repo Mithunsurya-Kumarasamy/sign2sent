@@ -6,6 +6,10 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+import sys
+
+# Add project root to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ml.models.cnn import SignCNN
 from ml.models.lstm import SignLSTM
@@ -34,7 +38,8 @@ def train_lstm():
     
     # Load dataset
     print("Loading sequence dataset...")
-    full_dataset = SignSequenceDataset(RAW_DATA_DIR, transform=get_base_transform())
+    from ml.preprocessing.preprocessing import get_train_transform
+    full_dataset = SignSequenceDataset(RAW_DATA_DIR, transform=get_train_transform())
     if len(full_dataset) == 0:
         print("Sequence dataset is empty. Run collect_data.py first.")
         return
@@ -158,7 +163,7 @@ def train_lstm():
         present_labels = sorted(list(set(all_labels)))
         target_names = [VOCABULARY[i] for i in present_labels]
         
-        report = classification_report(all_labels, all_preds, target_names=target_names, zero_division=0)
+        report = classification_report(all_labels, all_preds, labels=range(len(target_names)), target_names=target_names, zero_division=0)
         with open(RESULTS_DIR / "lstm_classification_report.txt", "w") as f:
             f.write(report)
             

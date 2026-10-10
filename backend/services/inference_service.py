@@ -20,29 +20,19 @@ class InferenceService:
         if frame is None:
             return {"error": "Invalid image"}
             
-        _, _, is_detected = self.detector.process_frame(frame)
+        processed_frame, landmarks, is_detected = self.detector.process_frame(frame)
         
-        # If no hand detected, check if we are in demo mode and bypassed
+        # If no hand is detected in frame
         if not is_detected:
-            if not self.detector.is_valid and self.recognizer.demo_mode:
-                # We are in bypass mode. Simulate passing the full frame to the recognizer.
-                # In demo mode, it just returns a fake sign randomly anyway.
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                sign, conf = self.recognizer.process_frame(frame_rgb)
-                return {
-                    "sign": sign,
-                    "confidence": conf,
-                    "hand_detected": True, # Fake it for UI
-                    "demo_mode": True
-                }
             return {"sign": None, "confidence": 0.0, "hand_detected": False}
             
+        # Extract hand crop
         hand_region = self.detector.extract_hand_region(frame)
         if hand_region is None or hand_region.size == 0:
-            return {"sign": None, "confidence": 0.0, "hand_detected": False}
+            hand_region = frame
             
         hand_rgb = cv2.cvtColor(hand_region, cv2.COLOR_BGR2RGB)
-        sign, conf = self.recognizer.process_frame(hand_rgb)
+        sign, conf = self.recognizer.process_frame(hand_rgb, landmarks=landmarks)
         
         return {
             "sign": sign,
