@@ -1,39 +1,30 @@
 import torch
 import torch.nn as nn
+import torchvision.models as models
 from ml.utils.config import CNN_INPUT_SIZE
 
 class SignCNN(nn.Module):
     def __init__(self, num_classes: int, feature_dim: int = 256):
         super(SignCNN, self).__init__()
         
-        # Input size: (3, 128, 128) if CNN_INPUT_SIZE is 128
-        self.features = nn.Sequential(
-            # Block 1
-            nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2), # Output: (32, 64, 64)
-            
-            # Block 2
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2), # Output: (64, 32, 32)
-            
-            # Block 3
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2), # Output: (128, 16, 16)
-            
-            # Block 4
-            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.AdaptiveAvgPool2d((1, 1)) # Output: (256, 1, 1)
-        )
+        # 1. Load Google's pre-trained MobileNetV2!
+        # It has already been trained on 1.2 million images to understand shapes and lighting.
+        mobilenet = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.DEFAULT)
         
+        # 2. Extract its "Brain" (we don't want its ImageNet classifier, just the feature extractor)
+        self.features = mobilenet.features
+        
+        # 3. Freeze the early layers so we don't accidentally ruin its pre-trained knowledge during training
+        for idx, child in enumerate(self.features.children()):
+            if idx < 10: # Freeze the first 10 blocks out of 18
+                for param in child.parameters():
+                    param.requires_grad = False
+                    
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        
+        # 4. Map MobileNet's 1280-dimension output down to our LSTM's expected feature_dim
         self.fc = nn.Sequential(
-            nn.Linear(256, feature_dim),
+            nn.Linear(1280, feature_dim),
             nn.ReLU(inplace=True),
             nn.Dropout(0.5)
         )
@@ -49,6 +40,7 @@ class SignCNN(nn.Module):
     def extract_features(self, x):
         """Extract spatial features to feed into LSTM later."""
         x = self.features(x)
+        x = self.pool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
         return x
