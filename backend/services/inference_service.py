@@ -24,6 +24,7 @@ class InferenceService:
         
         # If no hand is detected in frame
         if not is_detected:
+            self.recognizer.reset_buffer()
             return {"sign": None, "confidence": 0.0, "hand_detected": False}
             
         # Extract hand crop

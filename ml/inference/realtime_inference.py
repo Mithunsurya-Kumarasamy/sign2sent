@@ -50,23 +50,49 @@ class SignRecognizer:
             print("SignRecognizer: Model checkpoints not found. Operating in HEURISTIC DEMO MODE.")
             self.demo_mode = True
 
+    def reset_buffer(self):
+        """Clears the temporal frame buffer when a sign ends or hand leaves frame."""
+        self.frame_buffer.clear()
+
     def process_frame(self, frame_rgb: np.ndarray, landmarks: Optional[List[float]] = None) -> Tuple[Optional[str], float]:
         """
         Processes a single RGB frame, returning a sign prediction and confidence.
-        Supports both real PyTorch CNN+LSTM neural inference and landmark gesture heuristic mode.
+        Uses hybrid ensemble of real PyTorch CNN+LSTM neural network and landmark geometric analysis.
         """
-        # If in Demo Mode (no trained checkpoints on disk)
+        # Always compute geometric landmark gesture if landmarks exist
+        lm_sign, lm_conf = self._predict_demo_mode(landmarks) if landmarks else (None, 0.0)
+
+        # If in Pure Demo Mode (no trained checkpoints on disk)
         if self.demo_mode:
-            return self._predict_demo_mode(landmarks)
+            return lm_sign, lm_conf
 
         # Real Neural Network Inference Mode
         tensor_frame = self.transform(frame_rgb)
         self.frame_buffer.append(tensor_frame)
         
-        # Only predict if sliding window buffer is full
-        if len(self.frame_buffer) == SEQUENCE_LENGTH:
-            return self._predict_sequence()
-            
+        # When we have at least 4 frames (~1 sec at 4 FPS), run neural inference with padding if needed
+        neural_sign, neural_conf = None, 0.0
+        if len(self.frame_buffer) >= 4:
+            neural_sign, neural_conf = self._predict_sequence()
+
+        # Hybrid Decision:
+        # 1. If landmark detects a distinctive hand pose with high confidence (>0.90)
+        # e.g. HELLO, YES, GOOD, I, YOU, WATER, NAME, NO
+        if lm_sign and lm_conf >= 0.90:
+            # If neural model strongly predicts something specific (>0.75), give neural precedence,
+            # otherwise trust landmark geometry
+            if neural_sign and neural_conf >= 0.75:
+                return neural_sign, neural_conf
+            return lm_sign, lm_conf
+
+        # 2. If neural model has a valid prediction meeting confidence threshold
+        if neural_sign and neural_conf >= CONFIDENCE_THRESHOLD:
+            return neural_sign, neural_conf
+
+        # 3. Fallback to landmark gesture if available
+        if lm_sign:
+            return lm_sign, lm_conf
+
         return None, 0.0
 
     def _predict_demo_mode(self, landmarks: Optional[List[float]]) -> Tuple[Optional[str], float]:
@@ -80,9 +106,10 @@ class SignRecognizer:
         - Thumb Up: 'GOOD'
         - Fist (Closed hand): 'YES'
         - Rock Sign (Index + Pinky): 'YOU'
+        - Snapping Beak (Thumb close to Index + Middle): 'NO'
         """
         if not landmarks or len(landmarks) < 63:
-            return "HELLO", 0.90
+            return None, 0.0
 
         pts = [(landmarks[i * 3], landmarks[i * 3 + 1], landmarks[i * 3 + 2]) for i in range(21)]
 
@@ -97,7 +124,17 @@ class SignRecognizer:
 
         extended_count = sum([index_up, middle_up, ring_up, pinky_up])
 
-        if extended_count >= 4:
+        # Distance between thumb tip and index/middle tips
+        thumb_tip = np.array(pts[4][:2])
+        index_tip = np.array(pts[8][:2])
+        middle_tip = np.array(pts[12][:2])
+        d_index = np.linalg.norm(thumb_tip - index_tip)
+        d_middle = np.linalg.norm(thumb_tip - middle_tip)
+        is_pinching_no = (d_index < 0.08 and d_middle < 0.08 and not ring_up and not pinky_up)
+
+        if is_pinching_no:
+            return "NO", 0.94
+        elif extended_count >= 4:
             return "HELLO", 0.95
         elif index_up and middle_up and not ring_up and not pinky_up:
             return "NAME", 0.93
@@ -115,7 +152,15 @@ class SignRecognizer:
             return "HELLO", 0.88
 
     def _predict_sequence(self) -> Tuple[Optional[str], float]:
-        seq_tensor = torch.stack(list(self.frame_buffer)).unsqueeze(0).to(self.device)
+        frames = list(self.frame_buffer)
+        if not frames:
+            return None, 0.0
+
+        # If buffer has fewer than SEQUENCE_LENGTH frames, pad with the last frame
+        if len(frames) < SEQUENCE_LENGTH:
+            frames = frames + [frames[-1]] * (SEQUENCE_LENGTH - len(frames))
+
+        seq_tensor = torch.stack(frames).unsqueeze(0).to(self.device)
         
         with torch.no_grad():
             logits = self.model(seq_tensor)
