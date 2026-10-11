@@ -8,10 +8,25 @@ class Sign2SentModel(nn.Module):
     Combined CNN + LSTM model for end-to-end inference.
     Not typically trained end-to-end due to memory constraints, but useful for inference.
     """
-    def __init__(self, num_classes: int, feature_dim: int, hidden_size: int, num_layers: int):
+    def __init__(
+        self,
+        num_classes: int,
+        feature_dim: int,
+        hidden_size: int,
+        num_layers: int,
+        bidirectional: bool = True,
+        use_attention: bool = True
+    ):
         super(Sign2SentModel, self).__init__()
         self.cnn = SignCNN(num_classes=num_classes, feature_dim=feature_dim)
-        self.lstm = SignLSTM(feature_dim=feature_dim, hidden_size=hidden_size, num_layers=num_layers, num_classes=num_classes)
+        self.lstm = SignLSTM(
+            feature_dim=feature_dim,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            num_classes=num_classes,
+            bidirectional=bidirectional,
+            use_attention=use_attention
+        )
         
     def forward(self, x):
         """

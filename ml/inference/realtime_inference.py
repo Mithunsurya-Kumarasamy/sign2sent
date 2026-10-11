@@ -55,7 +55,7 @@ class SignRecognizer:
         Processes a single RGB frame, returning a sign prediction and confidence.
         Supports both real PyTorch CNN+LSTM neural inference and landmark gesture heuristic mode.
         """
-        # If in Demo Mode (no trained checkpoints on disk)
+        # If in Demo Mode (default when no trained vision CNN on disk)
         if self.demo_mode:
             return self._predict_demo_mode(landmarks)
 
@@ -65,35 +65,55 @@ class SignRecognizer:
         
         # Only predict if sliding window buffer is full
         if len(self.frame_buffer) == SEQUENCE_LENGTH:
-            return self._predict_sequence()
+            sign, conf = self._predict_sequence()
+            if sign is not None:
+                return sign, conf
+            
+        # Seamless fallback to landmark heuristics if neural buffer is filling or below threshold
+        if landmarks:
+            return self._predict_demo_mode(landmarks)
             
         return None, 0.0
 
     def _predict_demo_mode(self, landmarks: Optional[List[float]]) -> Tuple[Optional[str], float]:
         """
         Classifies hand gestures deterministically using 21 MediaPipe landmarks.
-        Provides stable, repeatable sign outputs ideal for viva demonstration and testing:
+        Uses rotation-invariant radial distance from wrist plus vertical posture checks:
         - Open Palm (>=4 fingers extended): 'HELLO'
         - Index Finger Up: 'I'
         - Peace / V Sign (Index + Middle): 'NAME'
         - 3 Fingers (Index + Middle + Ring): 'WATER'
         - Thumb Up: 'GOOD'
         - Fist (Closed hand): 'YES'
-        - Rock Sign (Index + Pinky): 'YOU'
+        - Rock / ILY Sign (Index + Pinky): 'YOU'
         """
         if not landmarks or len(landmarks) < 63:
             return "HELLO", 0.90
 
         pts = [(landmarks[i * 3], landmarks[i * 3 + 1], landmarks[i * 3 + 2]) for i in range(21)]
+        p0 = np.array(pts[0][:2]) # Wrist reference position
 
-        # Vertical extension checks (y decreases upward in normalized screen coordinates)
-        index_up = pts[8][1] < pts[6][1]
-        middle_up = pts[12][1] < pts[10][1]
-        ring_up = pts[16][1] < pts[14][1]
-        pinky_up = pts[20][1] < pts[18][1]
+        def is_finger_extended(pip_idx: int, tip_idx: int) -> bool:
+            p_pip = np.array(pts[pip_idx][:2])
+            p_tip = np.array(pts[tip_idx][:2])
+            d_tip = np.linalg.norm(p_tip - p0)
+            d_pip = np.linalg.norm(p_pip - p0)
+            # Extended if tip is radially farther from wrist or vertically higher than PIP
+            return bool((d_tip > d_pip * 1.12) or (p_tip[1] < p_pip[1] - 0.03))
 
-        thumb_dist = np.linalg.norm(np.array(pts[4][:2]) - np.array(pts[5][:2]))
-        thumb_up = pts[4][1] < pts[3][1] and thumb_dist > 0.07
+        index_up = is_finger_extended(6, 8)
+        middle_up = is_finger_extended(10, 12)
+        ring_up = is_finger_extended(14, 16)
+        pinky_up = is_finger_extended(18, 20)
+
+        # Thumb detection
+        p_thumb_tip = np.array(pts[4][:2])
+        p_thumb_ip = np.array(pts[3][:2])
+        p_thumb_mcp = np.array(pts[2][:2])
+        d_thumb_tip = np.linalg.norm(p_thumb_tip - p0)
+        d_thumb_mcp = np.linalg.norm(p_thumb_mcp - p0)
+        thumb_extended = bool(d_thumb_tip > d_thumb_mcp * 1.15)
+        thumb_up = bool(p_thumb_tip[1] < p_thumb_ip[1] and thumb_extended)
 
         extended_count = sum([index_up, middle_up, ring_up, pinky_up])
 

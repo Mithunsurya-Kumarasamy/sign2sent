@@ -11,7 +11,13 @@ from ml.models.cnn import SignCNN
 from ml.models.lstm import SignLSTM
 from ml.datasets.sign_dataset import SignSequenceDataset
 from ml.preprocessing.preprocessing import get_base_transform
-from ml.utils.config import RAW_DATA_DIR, MODELS_DIR, RESULTS_DIR, LSTM_BATCH_SIZE, LSTM_LEARNING_RATE, LSTM_EPOCHS, LSTM_HIDDEN_SIZE, LSTM_NUM_LAYERS, LSTM_DROPOUT
+from ml.utils.config import (
+    RAW_DATA_DIR, MODELS_DIR, RESULTS_DIR,
+    LSTM_BATCH_SIZE, LSTM_LEARNING_RATE, LSTM_EPOCHS,
+    LSTM_HIDDEN_SIZE, LSTM_NUM_LAYERS, LSTM_DROPOUT,
+    LSTM_BIDIRECTIONAL, LSTM_USE_ATTENTION, LSTM_WEIGHT_DECAY,
+    LSTM_LABEL_SMOOTHING, LSTM_GRAD_CLIP
+)
 from ml.utils.vocabulary import get_num_classes, VOCABULARY
 
 def train_lstm():
@@ -36,7 +42,7 @@ def train_lstm():
     print("Loading sequence dataset...")
     full_dataset = SignSequenceDataset(RAW_DATA_DIR, transform=get_base_transform())
     if len(full_dataset) == 0:
-        print("Sequence dataset is empty. Run collect_data.py first.")
+        print("Sequence dataset is empty. Run collect_data.py or benchmark_lstm.py first.")
         return
         
     train_size = int(0.8 * len(full_dataset))
@@ -46,11 +52,27 @@ def train_lstm():
     train_loader = DataLoader(train_dataset, batch_size=LSTM_BATCH_SIZE, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_dataset, batch_size=LSTM_BATCH_SIZE, shuffle=False, num_workers=0)
     
-    lstm = SignLSTM(feature_dim=feature_dim, hidden_size=LSTM_HIDDEN_SIZE, num_layers=LSTM_NUM_LAYERS, num_classes=num_classes, dropout=LSTM_DROPOUT).to(device)
+    # Enhanced Bidirectional LSTM with Temporal Attention
+    lstm = SignLSTM(
+        feature_dim=feature_dim,
+        hidden_size=LSTM_HIDDEN_SIZE,
+        num_layers=LSTM_NUM_LAYERS,
+        num_classes=num_classes,
+        dropout=LSTM_DROPOUT,
+        bidirectional=LSTM_BIDIRECTIONAL,
+        use_attention=LSTM_USE_ATTENTION
+    ).to(device)
     
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(lstm.parameters(), lr=LSTM_LEARNING_RATE)
+    # Label Smoothing prevents overconfident softmax on noisy gesture boundaries
+    criterion = nn.CrossEntropyLoss(label_smoothing=LSTM_LABEL_SMOOTHING)
     
+    # AdamW with weight decay
+    optimizer = optim.AdamW(lstm.parameters(), lr=LSTM_LEARNING_RATE, weight_decay=LSTM_WEIGHT_DECAY)
+    
+    # Cosine Annealing Learning Rate Scheduler for optimal convergence
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=LSTM_EPOCHS, eta_min=1e-5)
+    
+    best_val_acc = 0.0
     best_val_loss = float('inf')
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -58,7 +80,7 @@ def train_lstm():
     train_losses, val_losses = [], []
     train_accs, val_accs = [], []
     
-    print("Starting LSTM training...")
+    print(f"Starting LSTM training (Bi-LSTM={LSTM_BIDIRECTIONAL}, Attention={LSTM_USE_ATTENTION})...")
     for epoch in range(LSTM_EPOCHS):
         lstm.train()
         running_loss = 0.0
@@ -75,10 +97,19 @@ def train_lstm():
                 features = cnn.extract_features(flat_seq)
                 features = features.view(B, S, -1)
                 
+                # Sequence feature augmentation (temporal jitter/Gaussian noise during training)
+                if lstm.training:
+                    noise = torch.randn_like(features) * 0.01
+                    features = features + noise
+                
             optimizer.zero_grad()
             outputs = lstm(features)
             loss = criterion(outputs, labels)
             loss.backward()
+            
+            # Gradient clipping to prevent exploding gradients
+            torch.nn.utils.clip_grad_norm_(lstm.parameters(), max_norm=LSTM_GRAD_CLIP)
+            
             optimizer.step()
             
             running_loss += loss.item() * B
@@ -88,6 +119,9 @@ def train_lstm():
             
         epoch_train_loss = running_loss / len(train_loader.dataset)
         epoch_train_acc = correct / total
+        
+        # Step LR Scheduler
+        scheduler.step()
         
         # Validation
         lstm.eval()
@@ -119,14 +153,18 @@ def train_lstm():
         train_accs.append(epoch_train_acc)
         val_accs.append(epoch_val_acc)
         
-        print(f"Epoch {epoch+1}/{LSTM_EPOCHS} | Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | Train Acc: {epoch_train_acc:.4f} | Val Acc: {epoch_val_acc:.4f}")
+        current_lr = scheduler.get_last_lr()[0]
+        print(f"Epoch {epoch+1}/{LSTM_EPOCHS} (lr: {current_lr:.6f}) | Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | Train Acc: {epoch_train_acc:.4f} | Val Acc: {epoch_val_acc:.4f}")
         
-        if epoch_val_loss < best_val_loss:
+        # Save best checkpoint prioritising validation accuracy, then loss
+        is_best = (epoch_val_acc > best_val_acc) or (epoch_val_acc == best_val_acc and epoch_val_loss < best_val_loss)
+        if is_best:
+            best_val_acc = epoch_val_acc
             best_val_loss = epoch_val_loss
             torch.save(lstm.state_dict(), MODELS_DIR / "best_lstm.pth")
             
     # Evaluation
-    print("Evaluating best LSTM model...")
+    print(f"Evaluating best LSTM model (Best Val Acc: {best_val_acc:.4f})...")
     lstm.load_state_dict(torch.load(MODELS_DIR / "best_lstm.pth", map_location=device, weights_only=True))
     lstm.eval()
     all_preds, all_labels = [], []

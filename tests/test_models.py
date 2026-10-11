@@ -34,3 +34,33 @@ def test_sign2sent_end_to_end_shape():
     logits = model(dummy_input)
     
     assert logits.shape == (2, 10), f"Expected (2, 10), got {logits.shape}"
+
+def test_lstm_attention_weights_properties():
+    """Test that temporal attention weights are valid probability distributions (sum to 1.0)."""
+    model = SignLSTM(feature_dim=256, hidden_size=128, num_layers=2, num_classes=5, use_attention=True)
+    dummy_sequence = torch.randn(3, 15, 256)
+    logits, attn_weights = model(dummy_sequence, return_attention=True)
+    
+    assert logits.shape == (3, 5)
+    assert attn_weights.shape == (3, 15)
+    
+    # Attention weights must sum to 1.0 across the sequence dimension for each sample
+    sums = attn_weights.sum(dim=1)
+    assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5), "Attention weights do not sum to 1.0"
+    # Attention weights must be non-negative
+    assert (attn_weights >= 0.0).all(), "Attention weights must be >= 0"
+
+def test_lstm_unidirectional_fallback():
+    """Test that SignLSTM operates correctly when bidirectional=False and use_attention=False."""
+    model = SignLSTM(
+        feature_dim=128,
+        hidden_size=64,
+        num_layers=1,
+        num_classes=8,
+        bidirectional=False,
+        use_attention=False
+    )
+    dummy_sequence = torch.randn(4, 20, 128)
+    logits = model(dummy_sequence)
+    assert logits.shape == (4, 8)
+
