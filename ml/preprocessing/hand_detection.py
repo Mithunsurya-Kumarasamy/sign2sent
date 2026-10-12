@@ -229,8 +229,8 @@ class HandDetector:
 
     def extract_hand_region(self, frame: np.ndarray, padding: int = 20) -> Optional[np.ndarray]:
         """
-        Extracts the cropped bounding box of the hand region.
-        Uses cached bounding box from the most recent process_frame for maximum performance.
+        Extracts the cropped bounding box of the hand region with a square 1:1 aspect ratio.
+        Preserves natural finger and palm proportions when resized for CNN feature extraction.
         """
         if frame is None or frame.size == 0:
             return None
@@ -245,16 +245,22 @@ class HandDetector:
                 return None
             x_min, y_min, x_max, y_max = self._cached_bbox
 
-        # Add padding and clamp
-        x_min = max(0, x_min - padding)
-        y_min = max(0, y_min - padding)
-        x_max = min(w, x_max + padding)
-        y_max = min(h, y_max + padding)
+        cx = (x_min + x_max) // 2
+        cy = (y_min + y_max) // 2
+        bw = x_max - x_min
+        bh = y_max - y_min
+        side = int(max(bw, bh) * 1.25) // 2
+        side = max(side, padding)
 
-        if x_max <= x_min or y_max <= y_min:
+        x1 = max(0, cx - side)
+        y1 = max(0, cy - side)
+        x2 = min(w, cx + side)
+        y2 = min(h, cy + side)
+
+        if x2 <= x1 or y2 <= y1:
             return None
 
-        return frame[y_min:y_max, x_min:x_max]
+        return frame[y1:y2, x1:x2]
 
     def release(self):
         """Releases underlying resources."""

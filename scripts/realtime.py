@@ -55,7 +55,7 @@ def run_realtime():
             
             if hand_region is not None and hand_region.size > 0:
                 hand_rgb = cv2.cvtColor(hand_region, cv2.COLOR_BGR2RGB)
-                sign, conf = recognizer.process_frame(hand_rgb)
+                sign, conf = recognizer.process_frame(hand_rgb, landmarks=landmarks)
                 
                 if sign:
                     current_sign = sign
@@ -63,6 +63,8 @@ def run_realtime():
                     recognized_sequence.append(sign)
                     last_sign_time = time.time()
                     generated_sentence = sentence_gen.generate_sentence(recognized_sequence)
+        else:
+            recognizer.reset_buffer()
                     
         # 3. Display Info
         status_color = (0, 255, 0) if is_detected else (0, 0, 255)

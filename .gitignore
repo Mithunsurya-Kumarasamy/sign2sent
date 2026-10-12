@@ -32,6 +32,8 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 models/*.pth
+!models/best_cnn.pth
+!models/best_lstm.pth
 models/*.pt
 !models/.gitkeep
 

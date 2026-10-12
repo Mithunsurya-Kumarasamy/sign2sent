@@ -20,6 +20,7 @@ class SignRecognizer:
         
         # Buffers and State
         self.frame_buffer = collections.deque(maxlen=SEQUENCE_LENGTH)
+        self.history = collections.deque(maxlen=4)
         self.last_prediction = None
         self.cooldown_counter = 0
         self.transform = get_base_transform()
@@ -50,72 +51,146 @@ class SignRecognizer:
             print("SignRecognizer: Model checkpoints not found. Operating in HEURISTIC DEMO MODE.")
             self.demo_mode = True
 
+    def reset_buffer(self):
+        """Clears temporal sequence buffer and smoothing history when hand leaves frame."""
+        self.frame_buffer.clear()
+        self.history.clear()
+
     def process_frame(self, frame_rgb: np.ndarray, landmarks: Optional[List[float]] = None) -> Tuple[Optional[str], float]:
         """
         Processes a single RGB frame, returning a sign prediction and confidence.
-        Supports both real PyTorch CNN+LSTM neural inference and landmark gesture heuristic mode.
+        Uses hybrid ensemble of real PyTorch CNN+LSTM neural network and landmark geometric analysis
+        with temporal consensus smoothing.
         """
-        # If in Demo Mode (no trained checkpoints on disk)
-        if self.demo_mode:
-            return self._predict_demo_mode(landmarks)
+        # 1. Compute robust anatomical landmark gesture
+        lm_sign, lm_conf = self._predict_demo_mode(landmarks) if landmarks else (None, 0.0)
 
-        # Real Neural Network Inference Mode
+        # In pure demo mode
+        if self.demo_mode:
+            return self._apply_smoothing(lm_sign, lm_conf)
+
+        # 2. Real Neural Network Sequence Mode
         tensor_frame = self.transform(frame_rgb)
         self.frame_buffer.append(tensor_frame)
         
-        # Only predict if sliding window buffer is full
-        if len(self.frame_buffer) == SEQUENCE_LENGTH:
-            return self._predict_sequence()
-            
-        return None, 0.0
+        neural_sign, neural_conf = None, 0.0
+        if len(self.frame_buffer) >= 4:
+            neural_sign, neural_conf = self._predict_sequence()
+
+        # 3. Hybrid Decision Logic:
+        candidate_sign, candidate_conf = None, 0.0
+
+        # Prioritize landmark geometric confirmation (cleanest, background-invariant)
+        if lm_sign and lm_conf >= 0.90:
+            if neural_sign and neural_conf >= 0.80 and neural_sign != lm_sign:
+                candidate_sign, candidate_conf = neural_sign, neural_conf
+            else:
+                candidate_sign, candidate_conf = lm_sign, lm_conf
+        elif neural_sign and neural_conf >= CONFIDENCE_THRESHOLD:
+            candidate_sign, candidate_conf = neural_sign, neural_conf
+        elif lm_sign:
+            candidate_sign, candidate_conf = lm_sign, lm_conf
+
+        # 4. Temporal Smoothing
+        return self._apply_smoothing(candidate_sign, candidate_conf)
+
+    def _apply_smoothing(self, candidate_sign: Optional[str], candidate_conf: float) -> Tuple[Optional[str], float]:
+        """Applies rolling window consensus to eliminate single-frame jitter."""
+        if not candidate_sign:
+            if self.history:
+                self.history.popleft()
+            return None, 0.0
+
+        self.history.append(candidate_sign)
+        counts = collections.Counter(self.history)
+        most_common_sign, count = counts.most_common(1)[0]
+
+        if count >= 2:
+            return most_common_sign, max(candidate_conf, 0.91)
+        return candidate_sign, candidate_conf * 0.9
 
     def _predict_demo_mode(self, landmarks: Optional[List[float]]) -> Tuple[Optional[str], float]:
         """
-        Classifies hand gestures deterministically using 21 MediaPipe landmarks.
-        Provides stable, repeatable sign outputs ideal for viva demonstration and testing:
-        - Open Palm (>=4 fingers extended): 'HELLO'
-        - Index Finger Up: 'I'
-        - Peace / V Sign (Index + Middle): 'NAME'
-        - 3 Fingers (Index + Middle + Ring): 'WATER'
-        - Thumb Up: 'GOOD'
-        - Fist (Closed hand): 'YES'
-        - Rock Sign (Index + Pinky): 'YOU'
+        Classifies hand gestures deterministically using 21 MediaPipe landmarks with
+        radial distance and angle invariance. Never falls back to arbitrary defaults.
         """
         if not landmarks or len(landmarks) < 63:
-            return "HELLO", 0.90
+            return None, 0.0
 
-        pts = [(landmarks[i * 3], landmarks[i * 3 + 1], landmarks[i * 3 + 2]) for i in range(21)]
+        pts = [np.array([landmarks[i * 3], landmarks[i * 3 + 1]]) for i in range(21)]
+        wrist = pts[0]
 
-        # Vertical extension checks (y decreases upward in normalized screen coordinates)
-        index_up = pts[8][1] < pts[6][1]
-        middle_up = pts[12][1] < pts[10][1]
-        ring_up = pts[16][1] < pts[14][1]
-        pinky_up = pts[20][1] < pts[18][1]
+        # Radial extension test (works regardless of hand rotation or tilt)
+        def is_ext(tip_idx, pip_idx):
+            d_tip = np.linalg.norm(pts[tip_idx] - wrist)
+            d_pip = np.linalg.norm(pts[pip_idx] - wrist)
+            return (d_tip > 1.25 * d_pip) or (pts[tip_idx][1] < pts[pip_idx][1] and d_tip > d_pip)
 
-        thumb_dist = np.linalg.norm(np.array(pts[4][:2]) - np.array(pts[5][:2]))
-        thumb_up = pts[4][1] < pts[3][1] and thumb_dist > 0.07
+        index_up = is_ext(8, 6)
+        middle_up = is_ext(12, 10)
+        ring_up = is_ext(16, 14)
+        pinky_up = is_ext(20, 18)
+
+        d_thumb_wrist = np.linalg.norm(pts[4] - wrist)
+        thumb_up = (pts[4][1] < pts[3][1] < pts[2][1] and pts[4][1] < pts[0][1] - 0.12 and d_thumb_wrist > 0.16)
 
         extended_count = sum([index_up, middle_up, ring_up, pinky_up])
 
+        # Key finger interaction distances
+        d_thumb_index = np.linalg.norm(pts[4] - pts[8])
+        d_thumb_middle = np.linalg.norm(pts[4] - pts[12])
+        d_thumb_ring = np.linalg.norm(pts[4] - pts[16])
+        d_index_middle = np.linalg.norm(pts[8] - pts[12])
+
+        # 1. HELLO: Open palm (4 or 5 fingers extended spread apart)
         if extended_count >= 4:
-            return "HELLO", 0.95
-        elif index_up and middle_up and not ring_up and not pinky_up:
-            return "NAME", 0.93
-        elif index_up and middle_up and ring_up and not pinky_up:
-            return "WATER", 0.92
-        elif index_up and not middle_up and not ring_up and not pinky_up:
-            return "I", 0.94
-        elif index_up and pinky_up and not middle_up and not ring_up:
-            return "YOU", 0.91
-        elif thumb_up and extended_count == 0:
-            return "GOOD", 0.94
-        elif extended_count == 0:
-            return "YES", 0.91
-        else:
-            return "HELLO", 0.88
+            return "HELLO", 0.96
+
+        # 2. GOOD: Thumbs up (thumb pointing up, all 4 fingers curled)
+        if thumb_up and extended_count == 0:
+            return "GOOD", 0.97
+
+        # 3. YES: Closed fist (all 4 fingers curled, thumb folded)
+        if extended_count == 0:
+            return "YES", 0.94
+
+        # 4. WATER: Three fingers 'W' (index, middle, ring extended, pinky curled)
+        if index_up and middle_up and ring_up and not pinky_up:
+            return "WATER", 0.95
+
+        # 5. NO: Snapping beak (index & middle reaching thumb, pinched tips, ring & pinky curled)
+        if (index_up or middle_up) and d_thumb_index < 0.07 and d_thumb_middle < 0.07 and not ring_up and not pinky_up:
+            return "NO", 0.96
+
+        # 6. NAME: Peace / V sign (index and middle extended, ring & pinky curled)
+        if index_up and middle_up and not ring_up and not pinky_up and d_index_middle > 0.03:
+            return "NAME", 0.95
+
+        # 7. I: Single index finger up OR single pinky finger up
+        if (index_up and not middle_up and not ring_up and not pinky_up) or (pinky_up and not index_up and not middle_up and not ring_up):
+            return "I", 0.96
+
+        # 8. YOU: Rock sign (index and pinky up, middle & ring curled)
+        if index_up and pinky_up and not middle_up and not ring_up:
+            return "YOU", 0.94
+
+        # 9. FOOD: All fingertips pinched to thumb
+        if d_thumb_index < 0.08 and d_thumb_middle < 0.08 and d_thumb_ring < 0.08:
+            return "FOOD", 0.94
+
+        # No arbitrary false-positive fallback
+        return None, 0.0
 
     def _predict_sequence(self) -> Tuple[Optional[str], float]:
-        seq_tensor = torch.stack(list(self.frame_buffer)).unsqueeze(0).to(self.device)
+        frames = list(self.frame_buffer)
+        if not frames:
+            return None, 0.0
+
+        # If buffer has fewer than SEQUENCE_LENGTH frames, pad with the last frame
+        if len(frames) < SEQUENCE_LENGTH:
+            frames = frames + [frames[-1]] * (SEQUENCE_LENGTH - len(frames))
+
+        seq_tensor = torch.stack(frames).unsqueeze(0).to(self.device)
         
         with torch.no_grad():
             logits = self.model(seq_tensor)
