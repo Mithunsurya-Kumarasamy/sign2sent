@@ -44,6 +44,11 @@ results/*.png
 results/*.txt
 !results/.gitkeep
 
+# PDF documentation & generation scripts (excluded from git)
+*.pdf
+Sign_Language_Guide.html
+scripts/generate_*
+
 # OS
 .DS_Store
 Thumbs.db
