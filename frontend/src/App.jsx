@@ -189,11 +189,11 @@ export default function App() {
       <nav className="bg-[#09090b] border-b border-zinc-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-indigo-500 flex items-center justify-center shadow-xs">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
-              </svg>
-            </div>
+            <img 
+              src="/favicon.svg" 
+              alt="Sign2Sent Logo" 
+              className="w-9 h-9 rounded-xl shadow-md shadow-indigo-500/20 hover:scale-105 transition-transform" 
+            />
             <div>
               <h1 className="text-xl font-bold tracking-tight text-zinc-100">
                 Sign2Sent
